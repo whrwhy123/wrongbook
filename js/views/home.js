@@ -78,6 +78,7 @@ Views.home = {
     } else {
       listEl.innerHTML = list.map(q => this.cardHtml(q)).join('');
     }
+    App.bindImages(el);
 
     /* 事件绑定 */
     el.querySelector('#kwInput').addEventListener('input', e => {
@@ -111,7 +112,12 @@ Views.home = {
           <span style="flex:1"></span>
           <span style="font-size:.74rem;color:var(--text-light)">${fmtDate(q.createdAt).slice(0, 10)}</span>
         </div>
-        <div class="q-card-stem">${App.esc(q.stem)}</div>
+        <div class="q-card-stem">${App.esc(q.stem)}${(!q.stem && q.images && q.images.length) ? '<span style="color:var(--text-light);">（题目见图片）</span>' : ''}</div>
+        ${q.images && q.images.length ? `
+          <div class="img-thumbs">${q.images.slice(0, 3).map(id =>
+            `<div class="img-thumb" style="width:56px;height:56px;"><img data-imgid="${App.esc(id)}" alt="题目图片"></div>`).join('')}
+            ${q.images.length > 3 ? `<span class="form-hint" style="align-self:center;">+${q.images.length - 3}</span>` : ''}
+          </div>` : ''}
         ${tags ? `<div class="q-card-meta" style="margin-bottom:2px;">${tags}</div>` : ''}
         <div class="q-card-meta">
           ${total > 0 ? `<span class="correct">✓ 对 ${q.correctCount || 0}</span><span class="wrong">✗ 错 ${q.wrongCount || 0}</span>` : '<span>尚未重做</span>'}

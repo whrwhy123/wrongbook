@@ -26,11 +26,12 @@ function fmtDateShort() {
 async function exportBackup() {
   const data = {
     app: 'wrongbook',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     subjects: await DB.getAll('subjects'),
     tags: await DB.getAll('tags'),
     questions: await DB.getAll('questions'),
+    images: await DB.getAll('images'),
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   downloadBlob(blob, `错题本备份_${fmtDateShort()}.json`);
@@ -69,6 +70,10 @@ async function importBackup(file) {
       await DB.put('questions', q); updated++;
     }
   }
+  /* 恢复题目贴图（存在则覆盖） */
+  for (const im of (data.images || [])) {
+    if (im && im.id && im.dataUrl) await DB.put('images', im);
+  }
   await Store.setMeta('lastBackupAt', Date.now());
   await Mirror.save();
   return { added, updated };
@@ -77,10 +82,21 @@ async function importBackup(file) {
 /* ---------- 题型名称 ---------- */
 const TYPE_NAMES = { single: '单选题', subjective: '主观题' };
 
-/* ---------- 试卷导出 Word (.doc，Word / WPS 均可打开) ---------- */
-function buildPaperDoc(questions, title) {
+/* ---------- 试卷导出 Word (.doc，Word / WPS 均可打开；含贴图时用 MHTML 内嵌图片) ---------- */
+async function buildPaperDoc(questions, title) {
   const singles = questions.filter(q => q.type === 'single');
   const subjectives = questions.filter(q => q.type === 'subjective');
+
+  /* 收集题目贴图 */
+  const imgIds = Array.from(new Set(questions.flatMap(q => q.images || [])));
+  const imgRecs = [];
+  for (const id of imgIds) {
+    const r = await DB.get('images', id);
+    if (r && r.dataUrl) imgRecs.push(r);
+  }
+  const hasImg = id => imgRecs.some(r => r.id === id);
+  const imgHtml = (q) => (q.images || []).filter(hasImg)
+    .map(id => `<div style="margin:6px 0;"><img src="wbimg_${id}.jpg" style="max-width:100%;"></div>`).join('');
 
   const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -121,6 +137,7 @@ function buildPaperDoc(questions, title) {
       no++;
       html += `<div style="margin-bottom:14px;font-size:12pt;line-height:1.7;font-family:宋体;">`;
       html += `<b>${no}.</b> ${nl2br(q.stem)}`;
+      html += imgHtml(q);
       if (!isSubjective) {
         html += renderOption(q);
       } else {
@@ -147,6 +164,7 @@ function buildPaperDoc(questions, title) {
     ano++;
     body += `<div style="margin-bottom:16px;font-size:11pt;line-height:1.7;font-family:宋体;">`;
     body += `<div style="font-weight:bold;">${ano}. ${nl2br(q.stem)}</div>`;
+    body += imgHtml(q);
     body += `<div style="margin-top:4px;"><b style="color:#0a7a3d;">【正确答案】</b>${esc(q.answer || '（未填写）')}</div>`;
     if (q.wrongAnswer) {
       body += `<div><b style="color:#c0392b;">【我的错答】</b>${esc(q.wrongAnswer)}</div>`;
@@ -173,12 +191,24 @@ body { font-family: 宋体; font-size: 12pt; }
 <body>${body}</body></html>`;
 
   /* \ufeff BOM 确保 Word 正确识别 UTF-8 */
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' });
-  return blob;
+  if (!imgRecs.length) {
+    return new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' });
+  }
+  /* 有贴图：打包为 MHTML（Word 打开 .doc 时自动解析内嵌图片） */
+  const B = '----=_WBBOUND';
+  let out = 'MIME-Version: 1.0\r\nContent-Type: multipart/related; type="text/html"; boundary="' + B + '"\r\n\r\n';
+  out += '--' + B + '\r\nContent-Type: text/html; charset="utf-8"\r\nContent-Location: file:///C:/wrongbook/paper.htm\r\n\r\n' + html + '\r\n';
+  for (const r of imgRecs) {
+    const b64 = String(r.dataUrl).split(',')[1] || '';
+    const wrapped = b64.match(/.{1,76}/g).join('\r\n');
+    out += '--' + B + '\r\nContent-Type: image/jpeg\r\nContent-Transfer-Encoding: base64\r\nContent-Location: file:///C:/wrongbook/wbimg_' + r.id + '.jpg\r\n\r\n' + wrapped + '\r\n';
+  }
+  out += '--' + B + '--\r\n';
+  return new Blob([out], { type: 'application/msword' });
 }
 
-function exportPaperDoc(questions, title) {
+async function exportPaperDoc(questions, title) {
   if (!questions.length) throw new Error('没有可导出的题目');
-  const blob = buildPaperDoc(questions, title);
+  const blob = await buildPaperDoc(questions, title);
   downloadBlob(blob, `${title}_${fmtDateShort()}.doc`);
 }

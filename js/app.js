@@ -134,6 +134,54 @@ const App = {
     return fab;
   },
 
+  /* ---------- 图片工具 ---------- */
+  /* 读取图片文件并压缩为 JPEG dataUrl（控制体积，节省手机空间） */
+  fileToJpeg(file, maxW = 1600, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.width, h = img.height;
+          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片读取失败')); };
+      img.src = url;
+    });
+  },
+
+  /* 把容器内 <img data-imgid> 异步填充为真实图片，点击可看大图 */
+  bindImages(el) {
+    el.querySelectorAll('img[data-imgid]').forEach(img => {
+      DB.get('images', img.dataset.imgid).then(rec => {
+        if (rec && rec.dataUrl) {
+          img.src = rec.dataUrl;
+          img.onclick = (e) => { e.stopPropagation(); App.previewImage(rec.dataUrl); };
+        } else {
+          img.remove();
+        }
+      }).catch(() => img.remove());
+    });
+  },
+
+  /* 大图预览（点任意处关闭） */
+  previewImage(src) {
+    const box = document.createElement('div');
+    box.className = 'lightbox';
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '题目图片';
+    box.appendChild(img);
+    box.onclick = () => box.remove();
+    document.body.appendChild(box);
+  },
+
   /* ---------- Toast ---------- */
   _toastTimer: null,
   toast(msg, duration = 2200) {

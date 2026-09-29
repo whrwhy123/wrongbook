@@ -152,10 +152,12 @@ Views.practice = {
         <span class="badge badge-subject">${App.esc(Views.home.subjectName(q.subject))}</span>
       </div>
       <div class="card">
-        <div style="font-size:1rem;white-space:pre-wrap;word-break:break-word;line-height:1.7;">${App.esc(q.stem)}</div>
+        <div style="font-size:1rem;white-space:pre-wrap;word-break:break-word;line-height:1.7;">${App.esc(q.stem)}${(!q.stem && q.images && q.images.length) ? '<span style="color:var(--text-light);">（题目见图片）</span>' : ''}</div>
+        ${q.images && q.images.length ? `<div class="q-imgs">${q.images.map(id => `<img data-imgid="${App.esc(id)}" alt="题目图片">`).join('')}</div>` : ''}
         ${answerArea}
       </div>
     `;
+    App.bindImages(el);
 
     if (answered !== undefined) {
       el.querySelector('#btnNext').onclick = () => {

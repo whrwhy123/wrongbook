@@ -128,7 +128,12 @@ const Store = {
   },
 
   async deleteQuestion(id) {
+    const q = await DB.get('questions', id);
     await DB.del('questions', id);
+    /* 连同题目贴图一起删除，避免残留占用空间 */
+    if (q && q.images && q.images.length) {
+      for (const im of q.images) { try { await DB.del('images', im); } catch (e) {} }
+    }
     Mirror.save();
   },
 
@@ -170,6 +175,30 @@ const Store = {
     await DB.put('questions', q);
     Mirror.save();
     return q;
+  },
+
+  /* ---------- 题目贴图 ---------- */
+  async addImage(dataUrl) {
+    const rec = { id: this.uid('img'), dataUrl, createdAt: Date.now() };
+    await DB.put('images', rec);
+    return rec;
+  },
+
+  async getImage(id) {
+    return DB.get('images', id);
+  },
+
+  async getImages(ids) {
+    const out = [];
+    for (const id of (ids || [])) {
+      const r = await DB.get('images', id);
+      if (r) out.push(r);
+    }
+    return out;
+  },
+
+  async deleteImage(id) {
+    await DB.del('images', id);
   },
 
   /* ---------- 统计 ---------- */
@@ -216,6 +245,8 @@ const Mirror = {
         savedAt: new Date().toISOString(),
         subjects: await DB.getAll('subjects'),
         tags: await DB.getAll('tags'),
+        /* 镜像只存文字数据（含图片引用 id），图片本体在 IndexedDB，
+           避免撑爆 localStorage 5MB 限额；完整备份请用「导出备份文件」 */
         questions: await DB.getAll('questions'),
       };
       localStorage.setItem(this.KEY, JSON.stringify(data));

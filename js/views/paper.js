@@ -66,7 +66,7 @@ Views.paper = {
             <span class="badge badge-subject">${App.esc(this.subjectName(q.subject))}</span>
             ${q.mastered ? '<span class="badge badge-mastered">已掌握</span>' : ''}
           </span>
-          <span style="font-size:.9rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${App.esc(q.stem)}</span>
+          <span style="font-size:.9rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${App.esc(q.stem) || (q.images && q.images.length ? '（题目见图片）' : '')}</span>
         </span>
       </label>`).join('');
 
@@ -151,7 +151,8 @@ Views.paper = {
           <div class="paper-q-head">
             <span class="paper-q-no">${i + 1}.</span>
             <div>
-              <div class="paper-q-stem">${App.esc(q.stem)}</div>
+              <div class="paper-q-stem">${App.esc(q.stem)}${(!q.stem && q.images && q.images.length) ? '<span style="color:var(--text-light);">（题目见图片）</span>' : ''}</div>
+              ${q.images && q.images.length ? `<div class="q-imgs">${q.images.map(id => `<img data-imgid="${App.esc(id)}" alt="题目图片">`).join('')}</div>` : ''}
               ${q.type === 'subjective' ? '<div class="underline-space"><div class="line"></div><div class="line"></div><div class="line"></div></div>' : ''}
             </div>
           </div>
@@ -176,6 +177,7 @@ Views.paper = {
       ${questions.length ? qHtml : '<div class="empty"><span class="empty-icon">📭</span><p>试卷为空</p></div>'}
       ${questions.length ? `<button class="btn btn-primary btn-block btn-lg" id="btnExport2">⬇ 导出 Word 打印版（题目卷＋答案卷）</button>` : ''}
     `;
+    App.bindImages(el);
 
     /* 显示单题答案 */
     el.querySelectorAll('[data-show]').forEach(b => b.onclick = () => {
@@ -206,7 +208,7 @@ Views.paper = {
 
   async doExport() {
     try {
-      exportPaperDoc(this.doc.questions, '考编·高中政治错题重做卷');
+      await exportPaperDoc(this.doc.questions, '考编·高中政治错题重做卷');
       App.toast('已导出 Word，可在下载中查看并打印');
     } catch (e) {
       App.toast(e.message || '导出失败');

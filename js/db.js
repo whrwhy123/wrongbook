@@ -1,7 +1,7 @@
 /* ===== 数据层：IndexedDB 封装（本地存储，数据不会丢失） ===== */
 const DB = {
   name: 'wrongbook_db',
-  version: 1,
+  version: 2,
   _db: null,
 
   open() {
@@ -20,6 +20,10 @@ const DB = {
         }
         if (!db.objectStoreNames.contains('meta')) {
           db.createObjectStore('meta', { keyPath: 'key' });
+        }
+        /* v2 新增：题目贴图（压缩后的 base64） */
+        if (!db.objectStoreNames.contains('images')) {
+          db.createObjectStore('images', { keyPath: 'id' });
         }
       };
       req.onsuccess = () => { this._db = req.result; resolve(this._db); };

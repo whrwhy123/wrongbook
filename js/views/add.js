@@ -21,6 +21,7 @@ Views.add = {
         analysis: q.analysis || '',
         tags: q.tags ? [...q.tags] : [],
         source: q.source || '',
+        images: q.images ? [...q.images] : [],
         createdAt: q.createdAt,
       };
     } else {
@@ -36,6 +37,7 @@ Views.add = {
         analysis: '',
         tags: [],
         source: '',
+        images: [],
         createdAt: null,
       };
     }
@@ -67,11 +69,8 @@ Views.add = {
       if (text) f.options.push({ key, text });
     });
 
-    /* 答案与错答 */
-    if (f.type === 'single') {
-      f.answer = document.querySelector('input[name="fAnswer"]:checked')?.value || '';
-      f.wrongAnswer = document.querySelector('input[name="fWrong"]:checked')?.value || '';
-    } else {
+    /* 答案与错答：单选由字母按钮 / 错答 chips 直接写入 f，此处无需读取；主观读文本框 */
+    if (f.type === 'subjective') {
       f.answer = document.querySelector('#fAnswerText').value.trim();
       f.wrongAnswer = document.querySelector('#fWrongText').value.trim();
     }
@@ -85,7 +84,7 @@ Views.add = {
 
   validate() {
     const f = this.f;
-    if (!f.stem) { App.toast('请填写题干'); return false; }
+    if (!f.stem && !(f.images && f.images.length)) { App.toast('请填写题干，或贴上题目图片'); return false; }
     if (f.type !== 'subjective') {
       if (f.options.length < 2) { App.toast('选择题至少需要 2 个选项'); return false; }
       if (!f.answer) { App.toast('请选择正确答案'); return false; }
@@ -123,6 +122,7 @@ Views.add = {
       analysis: this.f.analysis,
       tags: this.f.tags,
       source: this.f.source,
+      images: [...(this.f.images || [])],
       createdAt: base ? base.createdAt : Date.now(),
       correctCount: base ? (base.correctCount || 0) : 0,
       wrongCount: base ? (base.wrongCount || 0) : 0,
@@ -156,11 +156,15 @@ Views.add = {
         </div>
         <div class="form-item">
           <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
-            <span>题干<span class="req">*</span></span>
-            <button type="button" class="btn btn-light btn-sm" id="btnOcr">📷 拍照识字</button>
+            <span>题干</span>
+            <span style="display:flex;gap:6px;">
+              <button type="button" class="btn btn-light btn-sm" id="btnCam">📷 拍照</button>
+              <button type="button" class="btn btn-light btn-sm" id="btnPic">🖼 相册</button>
+            </span>
           </label>
-          <input type="file" id="ocrFile" accept="image/*" hidden>
-          <textarea class="textarea" id="fStem" placeholder="输入题目内容，或点右上「拍照识字」">${App.esc(f.stem)}</textarea>
+          <textarea class="textarea" id="fStem" placeholder="输入题目内容；也可直接拍照 / 从相册贴题目图片">${App.esc(f.stem)}</textarea>
+          <div class="img-thumbs" id="imgThumbs"></div>
+          <div class="form-hint">贴图后题干可不填；点缩略图看大图，点 ✕ 移除</div>
         </div>
         <div id="optArea"></div>
         <div class="form-item">
@@ -192,6 +196,7 @@ Views.add = {
     `;
 
     this.renderOptions(el.querySelector('#optArea'));
+    this.renderThumbs();
 
     /* 题型切换 */
     el.querySelectorAll('.type-btn').forEach(b => b.onclick = () => {
@@ -215,18 +220,61 @@ Views.add = {
     el.querySelector('#btnCancel').onclick = () => App.go('home');
     el.querySelector('#btnSave').onclick = () => this.save();
 
-    /* 拍照识字 */
-    el.querySelector('#btnOcr').onclick = () => el.querySelector('#ocrFile').click();
-    el.querySelector('#ocrFile').onchange = (e) => {
-      const file = e.target.files[0];
-      e.target.value = '';
-      if (!file) return;
-      OCR.recognize(file, (text) => {
-        const ta = el.querySelector('#fStem');
-        ta.value = ta.value.trim() ? ta.value.trim() + '\n' + text : text;
-        f.stem = ta.value;
-      });
+    /* 拍照 / 相册：每次点击动态创建 input，兼容主屏幕（PWA 独立窗口）模式 */
+    el.querySelector('#btnCam').onclick = () => this.pickImage(true);
+    el.querySelector('#btnPic').onclick = () => this.pickImage(false);
+  },
+
+  /* 动态创建文件选择器（部分浏览器主屏幕模式下静态 input 点不开） */
+  pickImage(capture) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    if (capture) input.setAttribute('capture', 'environment');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      input.remove();
+      if (file) this.attachFile(file);
     };
+    /* 用户取消选择时清理节点 */
+    setTimeout(() => { if (document.body.contains(input)) input.remove(); }, 120000);
+    input.click();
+  },
+
+  async attachFile(file) {
+    try {
+      App.toast('图片处理中…', 1500);
+      const dataUrl = await App.fileToJpeg(file);
+      const rec = await Store.addImage(dataUrl);
+      this.f.images.push(rec.id);
+      this.renderThumbs();
+      App.toast('已添加题目图片 ✓');
+    } catch (e) {
+      App.toast(e.message || '图片添加失败');
+    }
+  },
+
+  /* 缩略图预览区 */
+  renderThumbs() {
+    const box = document.querySelector('#imgThumbs');
+    if (!box) return;
+    const ids = this.f.images || [];
+    box.innerHTML = ids.map(id => `
+      <div class="img-thumb">
+        <img data-imgid="${App.esc(id)}" alt="题目图片">
+        <button type="button" class="del" data-del-img="${App.esc(id)}" title="移除">✕</button>
+      </div>`).join('');
+    App.bindImages(box);
+    box.querySelectorAll('[data-del-img]').forEach(b => b.onclick = async (e) => {
+      e.stopPropagation();
+      const id = b.dataset.delImg;
+      this.f.images = this.f.images.filter(x => x !== id);
+      try { await Store.deleteImage(id); } catch (err) {}
+      this.renderThumbs();
+    });
   },
 
   renderOptions(area) {
@@ -248,37 +296,28 @@ Views.add = {
       const isAns = f.answer === o.key;
       return `
         <div class="option-row" data-key="${App.esc(o.key)}">
-          <span class="option-key ${isAns ? 'correct' : ''}">${App.esc(o.key)}</span>
+          <button type="button" class="option-key ${isAns ? 'correct' : ''}" data-ans="${App.esc(o.key)}"
+            title="点一下设为正确答案">${App.esc(o.key)}</button>
           <input class="input" placeholder="选项内容" value="${App.esc(o.text)}">
-          <label class="option-check" title="标记为正确答案" style="display:flex;align-items:center;justify-content:center;">
-            <input type="radio" name="fAnswer" value="${App.esc(o.key)}" ${isAns ? 'checked' : ''}
-              style="width:18px;height:18px;accent-color:var(--green);">
-          </label>
           <button type="button" class="option-del" title="删除选项">✕</button>
         </div>`;
     }).join('');
 
-    const wrongRows = f.options.map(o => {
-      const isWrong = f.wrongAnswer === o.key;
-      return `
-        <label class="option-row" style="cursor:pointer;">
-          <input type="radio" name="fWrong" value="${App.esc(o.key)}" ${isWrong ? 'checked' : ''}
-            style="width:18px;height:18px;accent-color:var(--red);flex-shrink:0;">
-          <span style="font-size:.85rem;color:var(--text-sub);">${App.esc(o.key)}. ${App.esc(o.text) || '（未填写）'}</span>
-        </label>`;
-    }).join('');
+    const wrongChips = f.options.map(o => `
+      <button type="button" class="chip chip-sm ${f.wrongAnswer === o.key ? 'active' : ''}"
+        data-wrong="${App.esc(o.key)}" style="${f.wrongAnswer === o.key ? 'background:var(--red);color:#fff;' : ''}">${App.esc(o.key)}</button>`).join('');
 
     area.innerHTML = `
       <div class="form-item">
         <label class="form-label">选项与正确答案<span class="req">*</span>
-          <span class="form-hint" style="font-weight:400;">点选项前的字母框，绿色＝正确答案</span>
+          <span class="form-hint" style="font-weight:400;">点字母设为正确答案（变绿），再点取消</span>
         </label>
         <div id="optList">${optionRows}</div>
         ${f.options.length < 8 ? '<button type="button" class="btn btn-light btn-sm" id="btnAddOpt">＋ 添加选项</button>' : ''}
       </div>
       <div class="form-item">
-        <label class="form-label">我当时错选了哪些（可选）</label>
-        <div>${wrongRows}</div>
+        <label class="form-label">我当时错选成 <span class="form-hint" style="font-weight:400;">可选：点字母记下你当时选错的选项，再点取消</span></label>
+        <div class="chips" id="wrongChips">${wrongChips || '<span class="form-hint">添加选项后可标记</span>'}</div>
       </div>`;
 
     /* 选项文本输入 */
@@ -288,12 +327,12 @@ Views.add = {
         const opt = f.options.find(o => o.key === key);
         if (opt) opt.text = e.target.value;
       });
-      /* 正确答案勾选 */
-      row.querySelector('input[name="fAnswer"]').addEventListener('change', e => {
-        f.answer = e.target.value;
-        area.querySelectorAll('#optList .option-key').forEach(k => k.classList.remove('correct'));
-        row.querySelector('.option-key').classList.add('correct');
-      });
+      /* 点字母 = 标记 / 取消正确答案 */
+      row.querySelector('[data-ans]').onclick = () => {
+        f.answer = (f.answer === key) ? '' : key;
+        area.querySelectorAll('#optList .option-key').forEach(k =>
+          k.classList.toggle('correct', k.dataset.ans === f.answer));
+      };
       /* 删除选项 */
       row.querySelector('.option-del').onclick = () => {
         f.options = f.options.filter(o => o.key !== key);
@@ -301,6 +340,18 @@ Views.add = {
         f.answer = ''; f.wrongAnswer = '';
         this.render(document.getElementById('main'));
       };
+    });
+
+    /* 错答 chips：点选 / 取消 */
+    area.querySelectorAll('#wrongChips [data-wrong]').forEach(c => c.onclick = () => {
+      const key = c.dataset.wrong;
+      f.wrongAnswer = (f.wrongAnswer === key) ? '' : key;
+      area.querySelectorAll('#wrongChips [data-wrong]').forEach(x => {
+        const on = x.dataset.wrong === f.wrongAnswer;
+        x.classList.toggle('active', on);
+        x.style.background = on ? 'var(--red)' : '';
+        x.style.color = on ? '#fff' : '';
+      });
     });
 
     /* 添加选项 */

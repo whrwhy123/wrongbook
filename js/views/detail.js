@@ -36,7 +36,8 @@ Views.detail = {
           <span style="flex:1"></span>
           <span style="font-size:.76rem;color:var(--text-light)">${fmtDate(q.createdAt)}</span>
         </div>
-        <div style="font-size:.98rem;white-space:pre-wrap;word-break:break-word;line-height:1.7;">${App.esc(q.stem)}</div>
+        <div style="font-size:.98rem;white-space:pre-wrap;word-break:break-word;line-height:1.7;">${App.esc(q.stem)}${(!q.stem && q.images && q.images.length) ? '<span style="color:var(--text-light);">（题目见图片）</span>' : ''}</div>
+        ${q.images && q.images.length ? `<div class="q-imgs">${q.images.map(id => `<img data-imgid="${App.esc(id)}" alt="题目图片">`).join('')}</div>` : ''}
         ${optionsHtml}
 
         <div class="answer-box">
@@ -75,6 +76,7 @@ Views.detail = {
       App.toast(after.mastered ? '已标记为掌握 ✓' : '已取消掌握标记');
     };
     el.querySelector('#btnEdit').onclick = () => App.go('add', { editId: q.id });
+    App.bindImages(el);
     el.querySelector('#btnDelete').onclick = async () => {
       const ok = await App.confirm('删除错题', '确定要删除这道错题吗？删除后无法恢复（除非之前导出过备份）。');
       if (!ok) return;
