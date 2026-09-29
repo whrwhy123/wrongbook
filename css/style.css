@@ -24,6 +24,9 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+/* hidden 属性必须始终生效（否则会被组件的 display:flex 覆盖，导致遮罩/返回按钮常显） */
+[hidden] { display: none !important; }
+
 html { font-size: 15px; }
 
 body {
