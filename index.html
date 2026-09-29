@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>错题本 · 高中政治考编</title>
+  <meta name="description" content="考编高中政治错题本：记录错题、生成试卷、反复练习">
+  <meta name="theme-color" content="#3355e0">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="错题本">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="splash/splash-1170x2532.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="splash/splash-1179x2556.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="splash/splash-1290x2796.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" href="splash/splash-828x1792.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="splash/splash-750x1334.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="splash/splash-1125x2436.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <button id="backBtn" class="topbar-back" hidden aria-label="返回">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z"/></svg>
+      </button>
+      <h1 id="pageTitle">错题本</h1>
+      <div class="topbar-right" id="topbarRight"></div>
+    </header>
+    <main id="main"></main>
+    <nav id="tabbar">
+      <button class="tab active" data-view="home">
+        <span class="tab-icon">📚</span><span class="tab-label">错题</span>
+      </button>
+      <button class="tab" data-view="paper">
+        <span class="tab-icon">📝</span><span class="tab-label">试卷</span>
+      </button>
+      <button class="tab" data-view="practice">
+        <span class="tab-icon">🎯</span><span class="tab-label">练习</span>
+      </button>
+      <button class="tab" data-view="settings">
+        <span class="tab-icon">⚙️</span><span class="tab-label">设置</span>
+      </button>
+    </nav>
+  </div>
+  <div id="toast" class="toast"></div>
+  <div id="modalWrap" class="modal-wrap" hidden>
+    <div class="modal">
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+  <script src="js/db.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/views/home.js"></script>
+  <script src="js/views/add.js"></script>
+  <script src="js/views/detail.js"></script>
+  <script src="js/views/paper.js"></script>
+  <script src="js/views/practice.js"></script>
+  <script src="js/views/settings.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
