@@ -4,11 +4,28 @@ const Store = {
     return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   },
 
-  /* 初始化：预置科目 */
+  /* 预置科目（考编·高中政治；升级时自动补全缺失科目） */
+  PRESET_SUBJECTS: [
+    '必修1 中国特色社会主义',
+    '必修2 经济与社会',
+    '必修3 政治与法治',
+    '必修4 哲学与文化',
+    '选必1 当代国际政治与经济',
+    '选必2 法律与生活',
+    '选必3 逻辑与思维',
+    '教育综合知识',
+    '学科教育教学知识',
+  ],
+
+  /* 初始化：补全预置科目 */
   async init() {
     const subs = await DB.getAll('subjects');
-    if (subs.length === 0) {
-      await DB.add('subjects', { id: 's_pre_1', name: '学科教育教学知识', createdAt: Date.now() });
+    const existing = new Set(subs.map(s => s.name));
+    let t = Date.now();
+    for (const name of this.PRESET_SUBJECTS) {
+      if (!existing.has(name)) {
+        await DB.add('subjects', { id: this.uid('s'), name, createdAt: t++ });
+      }
     }
   },
 

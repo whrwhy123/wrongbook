@@ -1,5 +1,5 @@
 /* ===== Service Worker：缓存静态资源，手机断网也能打开 ===== */
-const CACHE = 'wrongbook-v2';
+const CACHE = 'wrongbook-v3';
 
 const ASSETS = [
   './',
@@ -17,6 +17,7 @@ const ASSETS = [
   './js/db.js',
   './js/store.js',
   './js/export.js',
+  './js/ocr.js',
   './js/app.js',
   './js/views/home.js',
   './js/views/add.js',

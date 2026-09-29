@@ -62,7 +62,6 @@ Views.practice = {
           <div class="type-switch">
             <button type="button" class="type-btn ${cfg.type === 'all' ? 'active' : ''}" data-type="all">全部</button>
             <button type="button" class="type-btn ${cfg.type === 'single' ? 'active' : ''}" data-type="single">单选</button>
-            <button type="button" class="type-btn ${cfg.type === 'multiple' ? 'active' : ''}" data-type="multiple">多选</button>
             <button type="button" class="type-btn ${cfg.type === 'subjective' ? 'active' : ''}" data-type="subjective">主观</button>
           </div>
         </div>
@@ -142,24 +141,20 @@ Views.practice = {
         <button class="option-answer" data-key="${App.esc(o.key)}">
           <span class="opt-key">${App.esc(o.key)}.</span><span>${App.esc(o.text)}</span>
         </button>`).join('');
-      const confirmBtn = q.type === 'multiple'
-        ? `<button class="btn btn-primary btn-block" id="btnSubmit">提交答案</button>`
-        : '';
-      answerArea = `<div style="margin-top:12px;">${optionsHtml}${confirmBtn}</div>`;
+      answerArea = `<div style="margin-top:12px;">${optionsHtml}</div>`;
     }
 
     const progress = Math.round(idx / total * 100);
     el.innerHTML = `
       <div class="progress-track"><div class="progress-fill" style="width:${progress}%;"></div></div>
       <div style="font-size:.82rem;color:var(--text-light);margin-bottom:10px;">
-        第 ${idx + 1} / ${total} 题 · <span class="badge badge-${q.type === 'single' ? 'single' : q.type === 'multiple' ? 'multiple' : 'subjective'}">${TYPE_NAMES[q.type]}</span>
+        第 ${idx + 1} / ${total} 题 · <span class="badge badge-${q.type === 'single' ? 'single' : 'subjective'}">${TYPE_NAMES[q.type]}</span>
         <span class="badge badge-subject">${App.esc(Views.home.subjectName(q.subject))}</span>
       </div>
       <div class="card">
         <div style="font-size:1rem;white-space:pre-wrap;word-break:break-word;line-height:1.7;">${App.esc(q.stem)}</div>
         ${answerArea}
       </div>
-      ${q.type === 'multiple' && answered === undefined ? '<div class="form-hint" style="text-align:center;">多选题：点击选中选项，再次点击取消，最后提交</div>' : ''}
     `;
 
     if (answered !== undefined) {
@@ -180,24 +175,16 @@ Views.practice = {
       return;
     }
 
-    /* 选择题 */
+    /* 选择题：点选即判定 */
     const optBtns = el.querySelectorAll('.option-answer');
     const selected = new Set();
     optBtns.forEach(b => b.onclick = () => {
-      if (q.type === 'single') {
-        optBtns.forEach(x => x.classList.remove('selected'));
-        selected.clear();
-        b.classList.add('selected');
-        selected.add(b.dataset.key);
-        this.judgeChoice(q, selected, el);
-      } else {
-        b.classList.toggle('selected');
-        if (selected.has(b.dataset.key)) selected.delete(b.dataset.key);
-        else selected.add(b.dataset.key);
-      }
+      optBtns.forEach(x => x.classList.remove('selected'));
+      selected.clear();
+      b.classList.add('selected');
+      selected.add(b.dataset.key);
+      this.judgeChoice(q, selected, el);
     });
-    const submitBtn = el.querySelector('#btnSubmit');
-    if (submitBtn) submitBtn.onclick = () => this.judgeChoice(q, selected, el);
   },
 
   async judgeChoice(q, selected, el) {

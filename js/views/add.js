@@ -71,9 +71,6 @@ Views.add = {
     if (f.type === 'single') {
       f.answer = document.querySelector('input[name="fAnswer"]:checked')?.value || '';
       f.wrongAnswer = document.querySelector('input[name="fWrong"]:checked')?.value || '';
-    } else if (f.type === 'multiple') {
-      f.answer = Array.from(document.querySelectorAll('input[name="fAnswerM"]:checked')).map(i => i.value).sort().join('');
-      f.wrongAnswer = Array.from(document.querySelectorAll('input[name="fWrongM"]:checked')).map(i => i.value).sort().join('');
     } else {
       f.answer = document.querySelector('#fAnswerText').value.trim();
       f.wrongAnswer = document.querySelector('#fWrongText').value.trim();
@@ -93,7 +90,7 @@ Views.add = {
       if (f.options.length < 2) { App.toast('选择题至少需要 2 个选项'); return false; }
       if (!f.answer) { App.toast('请选择正确答案'); return false; }
       const keys = f.options.map(o => o.key);
-      if (f.type === 'multiple' && f.answer.split('').some(k => !keys.includes(k))) {
+      if (!keys.includes(f.answer)) {
         App.toast('正确答案与选项不符'); return false;
       }
     } else {
@@ -150,7 +147,6 @@ Views.add = {
           <label class="form-label">题型</label>
           <div class="type-switch">
             <button type="button" class="type-btn ${f.type === 'single' ? 'active' : ''}" data-type="single">单选题</button>
-            <button type="button" class="type-btn ${f.type === 'multiple' ? 'active' : ''}" data-type="multiple">多选题</button>
             <button type="button" class="type-btn ${f.type === 'subjective' ? 'active' : ''}" data-type="subjective">主观题</button>
           </div>
         </div>
@@ -159,8 +155,12 @@ Views.add = {
           <select class="select" id="fSubject">${subOptions}</select>
         </div>
         <div class="form-item">
-          <label class="form-label">题干<span class="req">*</span></label>
-          <textarea class="textarea" id="fStem" placeholder="粘贴或输入题目内容">${App.esc(f.stem)}</textarea>
+          <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>题干<span class="req">*</span></span>
+            <button type="button" class="btn btn-light btn-sm" id="btnOcr">📷 拍照识字</button>
+          </label>
+          <input type="file" id="ocrFile" accept="image/*" hidden>
+          <textarea class="textarea" id="fStem" placeholder="输入题目内容，或点右上「拍照识字」">${App.esc(f.stem)}</textarea>
         </div>
         <div id="optArea"></div>
         <div class="form-item">
@@ -214,6 +214,19 @@ Views.add = {
 
     el.querySelector('#btnCancel').onclick = () => App.go('home');
     el.querySelector('#btnSave').onclick = () => this.save();
+
+    /* 拍照识字 */
+    el.querySelector('#btnOcr').onclick = () => el.querySelector('#ocrFile').click();
+    el.querySelector('#ocrFile').onchange = (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      OCR.recognize(file, (text) => {
+        const ta = el.querySelector('#fStem');
+        ta.value = ta.value.trim() ? ta.value.trim() + '\n' + text : text;
+        f.stem = ta.value;
+      });
+    };
   },
 
   renderOptions(area) {
@@ -232,16 +245,13 @@ Views.add = {
     }
 
     const optionRows = f.options.map(o => {
-      const isAns = f.type === 'single' ? f.answer === o.key : f.answer.includes(o.key);
-      const isWrong = f.type === 'single' ? f.wrongAnswer === o.key : f.wrongAnswer.includes(o.key);
-      const ansName = f.type === 'single' ? 'fAnswer' : 'fAnswerM';
-      const wrongName = f.type === 'single' ? 'fWrong' : 'fWrongM';
+      const isAns = f.answer === o.key;
       return `
         <div class="option-row" data-key="${App.esc(o.key)}">
           <span class="option-key ${isAns ? 'correct' : ''}">${App.esc(o.key)}</span>
           <input class="input" placeholder="选项内容" value="${App.esc(o.text)}">
           <label class="option-check" title="标记为正确答案" style="display:flex;align-items:center;justify-content:center;">
-            <input type="${f.type === 'single' ? 'radio' : 'checkbox'}" name="${ansName}" value="${App.esc(o.key)}" ${isAns ? 'checked' : ''}
+            <input type="radio" name="fAnswer" value="${App.esc(o.key)}" ${isAns ? 'checked' : ''}
               style="width:18px;height:18px;accent-color:var(--green);">
           </label>
           <button type="button" class="option-del" title="删除选项">✕</button>
@@ -249,11 +259,10 @@ Views.add = {
     }).join('');
 
     const wrongRows = f.options.map(o => {
-      const isWrong = f.type === 'single' ? f.wrongAnswer === o.key : f.wrongAnswer.includes(o.key);
-      const wrongName = f.type === 'single' ? 'fWrong' : 'fWrongM';
+      const isWrong = f.wrongAnswer === o.key;
       return `
         <label class="option-row" style="cursor:pointer;">
-          <input type="${f.type === 'single' ? 'radio' : 'checkbox'}" name="${wrongName}" value="${App.esc(o.key)}" ${isWrong ? 'checked' : ''}
+          <input type="radio" name="fWrong" value="${App.esc(o.key)}" ${isWrong ? 'checked' : ''}
             style="width:18px;height:18px;accent-color:var(--red);flex-shrink:0;">
           <span style="font-size:.85rem;color:var(--text-sub);">${App.esc(o.key)}. ${App.esc(o.text) || '（未填写）'}</span>
         </label>`;
@@ -280,14 +289,10 @@ Views.add = {
         if (opt) opt.text = e.target.value;
       });
       /* 正确答案勾选 */
-      row.querySelector('input[name="fAnswer"],input[name="fAnswerM"]').addEventListener('change', e => {
+      row.querySelector('input[name="fAnswer"]').addEventListener('change', e => {
         f.answer = e.target.value;
-        row.querySelector('.option-key').classList.toggle('correct', e.target.checked);
-        if (f.type === 'multiple') {
-          /* 多选时同步刷新 answer 汇总 */
-          const keys = Array.from(area.querySelectorAll('input[name="fAnswerM"]:checked')).map(i => i.value);
-          f.answer = keys.sort().join('');
-        }
+        area.querySelectorAll('#optList .option-key').forEach(k => k.classList.remove('correct'));
+        row.querySelector('.option-key').classList.add('correct');
       });
       /* 删除选项 */
       row.querySelector('.option-del').onclick = () => {

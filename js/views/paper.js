@@ -62,7 +62,7 @@ Views.paper = {
         <input type="checkbox" data-id="${App.esc(q.id)}" ${pk.checked.has(q.id) ? 'checked' : ''}>
         <span style="flex:1;">
           <span style="display:flex;gap:6px;align-items:center;margin-bottom:3px;">
-            <span class="badge badge-${q.type === 'single' ? 'single' : q.type === 'multiple' ? 'multiple' : 'subjective'}">${TYPE_NAMES[q.type]}</span>
+            <span class="badge badge-${q.type === 'single' ? 'single' : 'subjective'}">${TYPE_NAMES[q.type]}</span>
             <span class="badge badge-subject">${App.esc(this.subjectName(q.subject))}</span>
             ${q.mastered ? '<span class="badge badge-mastered">已掌握</span>' : ''}
           </span>

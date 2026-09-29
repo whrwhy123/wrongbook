@@ -94,7 +94,6 @@ Views.home = {
   cardHtml(q) {
     const typeBadge = {
       single: '<span class="badge badge-single">单选</span>',
-      multiple: '<span class="badge badge-multiple">多选</span>',
       subjective: '<span class="badge badge-subjective">主观</span>'
     }[q.type] || '';
 

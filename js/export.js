@@ -75,12 +75,11 @@ async function importBackup(file) {
 }
 
 /* ---------- 题型名称 ---------- */
-const TYPE_NAMES = { single: '单选题', multiple: '多选题', subjective: '主观题' };
+const TYPE_NAMES = { single: '单选题', subjective: '主观题' };
 
 /* ---------- 试卷导出 Word (.doc，Word / WPS 均可打开) ---------- */
 function buildPaperDoc(questions, title) {
   const singles = questions.filter(q => q.type === 'single');
-  const multiples = questions.filter(q => q.type === 'multiple');
   const subjectives = questions.filter(q => q.type === 'subjective');
 
   const esc = s => String(s == null ? '' : s)
@@ -136,8 +135,7 @@ function buildPaperDoc(questions, title) {
   };
 
   body += section('一、单项选择题', singles, false);
-  body += section('二、多项选择题', multiples, false);
-  body += section('三、主观题（简答 / 材料分析）', subjectives, true);
+  body += section('二、主观题（简答 / 材料分析）', subjectives, true);
 
   /* 答案卷（另起一页） */
   body += `<br clear=all style='mso-special-character:line-break;page-break-before:always'>`;

@@ -30,7 +30,7 @@ Views.detail = {
     el.innerHTML = `
       <div class="card">
         <div class="q-card-head" style="margin-bottom:10px;">
-          <span class="badge badge-${q.type === 'single' ? 'single' : q.type === 'multiple' ? 'multiple' : 'subjective'}">${typeName}</span>
+          <span class="badge badge-${q.type === 'single' ? 'single' : 'subjective'}">${typeName}</span>
           <span class="badge badge-subject">${App.esc(Views.home.subjectName(q.subject))}</span>
           ${q.mastered ? '<span class="badge badge-mastered">✓ 已掌握</span>' : ''}
           <span style="flex:1"></span>
