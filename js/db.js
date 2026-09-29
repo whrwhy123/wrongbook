@@ -6,6 +6,10 @@ const DB = {
 
   open() {
     return new Promise((resolve, reject) => {
+      let settled = false;
+      const done = (fn) => { if (!settled) { settled = true; clearTimeout(timer); fn(); } };
+      /* 超时保护：数据库被其他标签页占用 / 浏览器存储卡死时给出可操作提示 */
+      const timer = setTimeout(() => done(() => reject(new Error('本地数据库打开超时：请关闭其他打开着错题本的标签页 / 重启浏览器后重试'))), 10000);
       const req = indexedDB.open(this.name, this.version);
       req.onupgradeneeded = (e) => {
         const db = e.target.result;
@@ -26,8 +30,8 @@ const DB = {
           db.createObjectStore('images', { keyPath: 'id' });
         }
       };
-      req.onsuccess = () => { this._db = req.result; resolve(this._db); };
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => done(() => { this._db = req.result; resolve(this._db); });
+      req.onerror = () => done(() => reject(req.error));
     });
   },
 

@@ -18,7 +18,8 @@ const App = {
       const main = document.getElementById('main');
       main.innerHTML = `<div class="empty"><span class="empty-icon">⚠️</span>
         <p>数据库初始化失败：${App.esc(e.message || e)}</p>
-        <p style="margin-top:8px;font-size:.8rem;">请尝试更换浏览器（推荐 Chrome / Edge / 手机自带浏览器）。</p></div>`;
+        <p style="margin-top:8px;font-size:.8rem;">请尝试关闭其他错题本标签页后重试，或更换浏览器（推荐 Chrome / Edge / 手机自带浏览器）。</p>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="location.reload()">重试</button></div>`;
       return;
     }
 
